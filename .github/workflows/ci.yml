@@ -16,9 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       EDON_AUTH_ENABLED: "true"
-      EDON_API_TOKEN: "env:
-  EDON_AUTH_ENABLED: true
-  EDON_API_TOKEN: ci-test-token"
+      EDON_API_TOKEN: "ci-test-token"
       EDON_CREDENTIALS_STRICT: "false"
       EDON_DB_URL: "sqlite:///./ci_edon.db"
 
