@@ -19,5 +19,4 @@ scripts/
 ui/
 nginx/
 examples/
-benchmarking.py
-# NOTE: audit.py, observation.py, governor.py etc. are runtime modules — do NOT exclude them
+# NOTE: only exclude true non-runtime files. benchmarking.py, audit.py, etc. are imported by main.py.
