@@ -1,0 +1,27 @@
+app = "edon-gateway"
+primary_region = "iad"
+
+[build]
+
+[http_service]
+  internal_port = 8000
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  min_machines_running = 1
+
+[env]
+  EDON_AUTH_ENABLED = "true"
+  EDON_CREDENTIALS_STRICT = "true"
+  EDON_TOKEN_HARDENING = "true"
+  EDON_VALIDATE_STRICT = "true"
+  EDON_LOG_LEVEL = "INFO"
+  EDON_JSON_LOGGING = "true"
+  EDON_METRICS_ENABLED = "true"
+  EDON_RATE_LIMIT_ENABLED = "true"
+  EDON_CORS_ORIGINS = "http://localhost:5173,http://localhost:3000,https://edoncore.com"
+
+[[vm]]
+  memory = "512mb"
+  cpu_kind = "shared"
+  cpus = 1
