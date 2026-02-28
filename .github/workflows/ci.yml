@@ -1,7 +1,8 @@
 # CI for EDON Gateway standalone repo.
 #
 # Uvicorn entrypoint: edon_gateway.main:app
-# (FastAPI app is defined in edon_gateway/edon_gateway/main.py as app = FastAPI(...))
+# All source files live at the repo root (relative imports). A symlink is
+# created so the root is importable as the 'edon_gateway' package.
 
 name: CI
 
@@ -40,9 +41,16 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare edon_gateway package
+        run: |
+          # Source files are at the repo root with relative imports.
+          # Create a sibling symlink so Python can import them as 'edon_gateway'.
+          ln -s "$(pwd)" "$(dirname $(pwd))/edon_gateway"
+          echo "PYTHONPATH=$(dirname $(pwd))" >> $GITHUB_ENV
+
       - name: Start uvicorn (background)
         run: |
-          PYTHONPATH=. python -m uvicorn edon_gateway.main:app --host 127.0.0.1 --port 8000 --log-level debug > uvicorn.log 2>&1 &
+          python -m uvicorn edon_gateway.main:app --host 127.0.0.1 --port 8000 --log-level debug > uvicorn.log 2>&1 &
           echo $! > uvicorn.pid
 
       - name: Wait for server ready

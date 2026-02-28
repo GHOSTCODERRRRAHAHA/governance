@@ -10,3 +10,14 @@ __pycache__
 node_modules
 .venv
 venv
+# Tests and docs (not needed at runtime)
+test*.py
+*.md
+docs/
+scripts/
+.github/
+ui/
+nginx/
+examples/
+benchmarking.py
+audit.py

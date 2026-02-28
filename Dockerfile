@@ -11,7 +11,7 @@ RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt ./requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY edon_gateway/ ./edon_gateway/
+COPY . ./edon_gateway/
 ENV PYTHONPATH=/app
 
 # Persisted data (mount volume at /app/data)
