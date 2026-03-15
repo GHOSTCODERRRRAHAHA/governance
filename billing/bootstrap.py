@@ -1,12 +1,15 @@
 from fastapi import APIRouter, Request, HTTPException
 from typing import Dict
+import os
 import secrets
 import hashlib
+import logging
 
 from ..persistence import get_db
 from ..config import config
 from ..tenancy import get_request_tenant_id
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["billing"])
 
 
@@ -46,6 +49,78 @@ async def billing_status(request: Request):
             "requests_per_minute": limits.requests_per_minute
         }
     }
+
+
+@router.post("/checkout")
+async def create_checkout(request: Request):
+    """
+    Create a Stripe Checkout session for a plan subscription.
+
+    Body: { tenant_id, plan, success_url, cancel_url }
+    Returns: { checkout_url }
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid JSON body")
+
+    tenant_id = body.get("tenant_id", "")
+    plan = (body.get("plan") or "starter").lower().strip()
+    success_url = body.get("success_url", "")
+    cancel_url = body.get("cancel_url", "")
+
+    # Optionally verify Clerk token to extract email for the checkout session
+    email = ""
+    try:
+        from ..middleware.auth import get_token_from_header, verify_clerk_token
+        token = get_token_from_header(request)
+        if token:
+            claims = verify_clerk_token(token) or {}
+            email = claims.get("email", "")
+    except Exception:
+        pass
+
+    # Free plan: no payment needed — redirect straight to success
+    if plan == "free":
+        return {"checkout_url": success_url}
+
+    plan_upper = plan.upper()
+    price_id = os.getenv(f"STRIPE_PRICE_{plan_upper}", "")
+    payment_link = os.getenv(f"STRIPE_PAYMENT_LINK_{plan_upper}", "")
+    stripe_secret = os.getenv("STRIPE_SECRET_KEY", "")
+
+    # Prefer a proper Checkout Session when we have a price ID + secret key
+    if price_id and stripe_secret:
+        try:
+            import stripe
+            stripe.api_key = stripe_secret
+            session = stripe.checkout.Session.create(
+                payment_method_types=["card"],
+                line_items=[{"price": price_id, "quantity": 1}],
+                mode="subscription",
+                success_url=success_url,
+                cancel_url=cancel_url,
+                customer_email=email or None,
+                metadata={"tenant_id": tenant_id, "plan": plan},
+            )
+            return {"checkout_url": session.url}
+        except Exception as e:
+            logger.error(f"Stripe checkout session creation failed: {e}")
+            raise HTTPException(status_code=503, detail="Payment processing unavailable")
+
+    # Fall back to a pre-configured Stripe payment link
+    if payment_link:
+        url = payment_link
+        if tenant_id:
+            separator = "&" if "?" in url else "?"
+            url += f"{separator}client_reference_id={tenant_id}"
+        return {"checkout_url": url}
+
+    raise HTTPException(
+        status_code=503,
+        detail=f"No Stripe configuration found for plan '{plan}'. "
+               f"Set STRIPE_PRICE_{plan_upper} or STRIPE_PAYMENT_LINK_{plan_upper}.",
+    )
 
 
 @router.post("/api-keys")
